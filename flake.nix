@@ -80,7 +80,7 @@
 
             outputHashMode = "recursive";
             outputHashAlgo = "sha256";
-            outputHash = pkgs.lib.fakeSha256;
+            outputHash = "sha256-OASHwHQARkyZhYdXPs3cKcnWmvZwWmMTK1byGajq0hg=";
           };
 
           # 覆盖 buildPhase 来修复补丁并构建
