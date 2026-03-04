@@ -108,7 +108,11 @@
               jq 'del(.scripts.postinstall)' package.json | sponge package.json
             fi
 
-            find . -name "yarn.lock" -printf "%h\n" | \
+            # 首先安装根目录的依赖
+            yarn install --offline --frozen-lockfile --ignore-scripts --ignore-engines
+
+            # 然后安装其他目录的依赖
+            find . -name "yarn.lock" -not -path "./yarn.lock" -printf "%h\n" | \
                 xargs -I {} yarn --cwd {} \
                   --offline --frozen-lockfile --ignore-scripts --ignore-engines
             patchShebangs .
