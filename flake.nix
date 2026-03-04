@@ -74,6 +74,7 @@
 
           nativeBuildInputs = with pkgs; [
             nodejs_22
+            pnpm
             pnpmConfigHook
             python3
             pkg-config
