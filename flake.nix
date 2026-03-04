@@ -56,9 +56,10 @@
             ${pkgs.jq}/bin/jq 'del(.scripts.postinstall)' package.json > package.json.tmp
             mv package.json.tmp package.json
 
-            # inject git commit
+            # inject git commit and remove git commands
             substituteInPlace ./ci/build/build-vscode.sh \
-              --replace-fail '$(git rev-parse HEAD)' "${commit}"
+              --replace-fail '$(git rev-parse HEAD)' "${commit}" \
+              --replace-fail 'git checkout product.json' 'true'
             substituteInPlace ./ci/build/build-release.sh \
               --replace-fail '$(git rev-parse HEAD)' "${commit}"
           '';
