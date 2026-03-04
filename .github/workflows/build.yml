@@ -32,13 +32,15 @@ jobs:
             accept-flake-config = true
 
       - name: Setup Cachix
-        if: ${{ secrets.CACHIX_CACHE_NAME != '' && secrets.CACHIX_AUTH_TOKEN != '' }}
+        if: ${{ env.CACHIX_CACHE_NAME != '' }}
         continue-on-error: true
         uses: cachix/cachix-action@v15
         with:
           name: ${{ secrets.CACHIX_CACHE_NAME }}
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
           pushFilter: "(-source$|-src$)"
+        env:
+          CACHIX_CACHE_NAME: ${{ secrets.CACHIX_CACHE_NAME }}
 
       - name: Setup QEMU for cross-compilation
         if: matrix.system == 'aarch64-linux'
@@ -59,9 +61,11 @@ jobs:
           ls -lh result/
 
       - name: Push to Cachix
-        if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && secrets.CACHIX_CACHE_NAME != '' && secrets.CACHIX_AUTH_TOKEN != '' }}
+        if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && env.CACHIX_CACHE_NAME != '' }}
         continue-on-error: true
         run: |
           nix build .#code-server --system ${{ matrix.system }} --json \
             | jq -r '.[].outputs.out' \
             | cachix push ${{ secrets.CACHIX_CACHE_NAME }}
+        env:
+          CACHIX_CACHE_NAME: ${{ secrets.CACHIX_CACHE_NAME }}
