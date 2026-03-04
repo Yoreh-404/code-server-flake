@@ -14,21 +14,69 @@
         version = "4.109.5";
         commit = "d58aaa7b346b3262e0d4959e5fd5965e95ce456e";
 
+        src = pkgs.fetchFromGitHub {
+          owner = "coder";
+          repo = "code-server";
+          rev = "v${version}";
+          hash = "sha256-gS2ReYCAsqmdRw0tx+svPrw0zwF41/+aICBqfflxB14=";
+          fetchSubmodules = true;
+        };
+
+        # 预处理源码：删除锁文件，修改 package.json
+        patchedSrc = pkgs.stdenv.mkDerivation {
+          name = "code-server-${version}-patched-src";
+          inherit src;
+
+          nativeBuildInputs = [ pkgs.jq ];
+
+          buildPhase = ''
+            cp -r $src $out
+            chmod -R +w $out
+
+            cd $out
+
+            # 删除所有锁文件
+            find . -name "package-lock.json" -delete
+            find . -name "yarn.lock" -delete
+
+            # 删除 postinstall 脚本
+            jq 'del(.scripts.postinstall)' package.json > package.json.tmp
+            mv package.json.tmp package.json
+
+            # 删除 lib/vscode 的 preinstall 脚本
+            if [ -f lib/vscode/package.json ]; then
+              jq 'del(.scripts.preinstall)' lib/vscode/package.json > lib/vscode/package.json.tmp
+              mv lib/vscode/package.json.tmp lib/vscode/package.json
+            fi
+
+            # 创建 pnpm-workspace.yaml 来管理 monorepo
+            cat > pnpm-workspace.yaml <<'EOF'
+packages:
+  - '.'
+  - 'lib/vscode'
+  - 'vendor'
+EOF
+          '';
+
+          dontInstall = true;
+        };
+
+        pnpmDeps = pkgs.pnpm.fetchDeps {
+          pname = "code-server-pnpm-deps";
+          inherit version;
+          src = patchedSrc;
+          hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+        };
+
         code-server = pkgs.stdenv.mkDerivation {
           pname = "code-server-pnpm";
           inherit version;
 
-          src = pkgs.fetchFromGitHub {
-            owner = "coder";
-            repo = "code-server";
-            rev = "v${version}";
-            hash = "sha256-gS2ReYCAsqmdRw0tx+svPrw0zwF41/+aICBqfflxB14=";
-            fetchSubmodules = true;
-          };
+          src = patchedSrc;
 
           nativeBuildInputs = with pkgs; [
             nodejs_22
-            nodePackages.pnpm
+            pnpm.configHook
             python3
             pkg-config
             git
@@ -45,8 +93,7 @@
             xorg.libxkbfile
           ];
 
-          # 允许网络访问来转换依赖
-          __noChroot = true;
+          inherit pnpmDeps;
 
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1";
           SKIP_SUBMODULE_DEPS = "1";
@@ -54,20 +101,6 @@
           postPatch = ''
             export HOME=$PWD
             patchShebangs ./ci
-
-            # 删除所有 package-lock.json 和 yarn.lock
-            find . -name "package-lock.json" -delete
-            find . -name "yarn.lock" -delete
-
-            # 删除 postinstall 脚本
-            jq 'del(.scripts.postinstall)' package.json > package.json.tmp
-            mv package.json.tmp package.json
-
-            # 删除 lib/vscode 的 preinstall 脚本
-            if [ -f lib/vscode/package.json ]; then
-              jq 'del(.scripts.preinstall)' lib/vscode/package.json > lib/vscode/package.json.tmp
-              mv lib/vscode/package.json.tmp lib/vscode/package.json
-            fi
 
             # 修复 git 命令
             substituteInPlace ./ci/build/build-vscode.sh \
@@ -98,17 +131,7 @@
               lib/vscode/src/vs/platform/update/common/update.config.contribution.ts
           '';
 
-          configurePhase = ''
-            runHook preConfigure
-
-            export HOME=$PWD
-            export GIT_SSL_CAINFO="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
-            export PNPM_HOME="$PWD/.pnpm"
-            export PATH="$PNPM_HOME:$PATH"
-
-            # 初始化 pnpm
-            pnpm config set store-dir "$PWD/.pnpm-store"
-
+          preBuild = ''
             # 创建 stub kerberos
             mkdir -p lib/vscode/node_modules/kerberos
             cat > lib/vscode/node_modules/kerberos/package.json <<'EOF'
@@ -119,28 +142,6 @@
             }
             EOF
             echo "module.exports = {};" > lib/vscode/node_modules/kerberos/index.js
-
-            # 使用 pnpm 导入依赖
-            echo "Installing root dependencies with pnpm..."
-            pnpm install --no-frozen-lockfile
-
-            # 安装 lib/vscode 依赖
-            if [ -f lib/vscode/package.json ]; then
-              echo "Installing lib/vscode dependencies with pnpm..."
-              cd lib/vscode
-              pnpm install --no-frozen-lockfile
-              cd ../..
-            fi
-
-            # 安装 vendor 依赖
-            if [ -d vendor ]; then
-              echo "Installing vendor dependencies with pnpm..."
-              cd vendor
-              pnpm install --no-frozen-lockfile
-              cd ..
-            fi
-
-            runHook postConfigure
           '';
 
           buildPhase = ''
