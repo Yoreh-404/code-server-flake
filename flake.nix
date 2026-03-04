@@ -50,10 +50,18 @@
               npm config set fetch-retry-maxtimeout 120000
               npm config set fetch-timeout 300000
 
+              # 配置 yarn offline mirror
+              yarn config set yarn-offline-mirror $out
+
+              # 安装根目录依赖到 offline mirror
+              yarn install --frozen-lockfile --ignore-scripts --ignore-platform \
+                --ignore-engines --no-progress --non-interactive
+
+              # 安装 vendor 依赖
               yarn --cwd "./vendor" install --modules-folder modules --ignore-scripts --frozen-lockfile
 
-              yarn config set yarn-offline-mirror $out
-              find "$PWD" -name "yarn.lock" -printf "%h\n" | \
+              # 查找并安装所有子目录的依赖
+              find "$PWD" -name "yarn.lock" -not -path "$PWD/yarn.lock" -printf "%h\n" | \
                 xargs -I {} yarn --cwd {} \
                   --frozen-lockfile --ignore-scripts --ignore-platform \
                   --ignore-engines --no-progress --non-interactive
@@ -67,7 +75,7 @@
 
             outputHashMode = "recursive";
             outputHashAlgo = "sha256";
-            outputHash = "sha256-3xDinhLSZJoz7N7Z/+ttDLh82fwyunOTeSE3ULOZcHA=";
+            outputHash = pkgs.lib.fakeSha256;
           });
 
           # 覆盖 buildPhase 来修复补丁并构建
