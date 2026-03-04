@@ -26,7 +26,7 @@
             fetchSubmodules = true;
           };
 
-          npmDepsHash = "sha256-Ec0ZlwdihsSbz+4OLPZ9OyBSx88HDOPp16ENEuvzQu4=";
+          npmDepsHash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
 
           nativeBuildInputs = with pkgs; [
             python3
@@ -51,6 +51,10 @@
           postPatch = ''
             export HOME=$PWD
             patchShebangs ./ci
+
+            # 删除 postinstall 脚本，避免安装 test 依赖
+            ${pkgs.jq}/bin/jq 'del(.scripts.postinstall)' package.json > package.json.tmp
+            mv package.json.tmp package.json
 
             # inject git commit
             substituteInPlace ./ci/build/build-vscode.sh \
