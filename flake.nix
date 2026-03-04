@@ -67,13 +67,6 @@
               if [ -f lib/vscode/package.json ]; then
                 echo "安装 lib/vscode 依赖"
 
-                # 先安装 preinstall 脚本需要的 node-gyp
-                if [ -f lib/vscode/build/npm/gyp/package.json ]; then
-                  echo "安装 node-gyp 依赖"
-                  npm install --prefix lib/vscode/build/npm/gyp --verbose || \
-                  npm install --prefix lib/vscode/build/npm/gyp --verbose
-                fi
-
                 # 创建 stub kerberos 包来跳过编译
                 echo "创建 stub kerberos 包以跳过编译"
                 mkdir -p lib/vscode/node_modules/kerberos
@@ -90,10 +83,11 @@ EOF
 module.exports = {};
 EOF
 
-                # 正常安装其他依赖（允许运行脚本以确保完整安装）
-                echo "安装依赖（kerberos 已被 stub 替代）"
-                npm install --prefix lib/vscode --verbose || \
-                npm install --prefix lib/vscode --verbose
+                # 使用 --ignore-scripts 安装依赖，避免 preinstall 脚本失败
+                # preinstall 脚本只是下载 Electron headers，在 Nix 构建中不需要
+                echo "安装依赖（跳过 preinstall 脚本）"
+                npm install --prefix lib/vscode --ignore-scripts --verbose || \
+                npm install --prefix lib/vscode --ignore-scripts --verbose
 
                 # 验证关键依赖已安装
                 if [ ! -f lib/vscode/node_modules/gulp/bin/gulp.js ]; then
