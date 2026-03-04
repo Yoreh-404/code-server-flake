@@ -61,11 +61,12 @@ EOF
           dontInstall = true;
         };
 
-        pnpmDeps = pkgs.pnpm.fetchDeps {
+        pnpmDeps = pkgs.fetchPnpmDeps {
           pname = "code-server-pnpm-deps";
           inherit version;
           src = patchedSrc;
           hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+          fetcherVersion = "1";
         };
 
         code-server = pkgs.stdenv.mkDerivation {
@@ -76,7 +77,7 @@ EOF
 
           nativeBuildInputs = with pkgs; [
             nodejs_22
-            pnpm.configHook
+            pnpmConfigHook
             python3
             pkg-config
             git
@@ -89,8 +90,8 @@ EOF
           buildInputs = with pkgs; [
             ripgrep
             libsecret
-            xorg.libX11
-            xorg.libxkbfile
+            libx11
+            libxkbfile
           ];
 
           inherit pnpmDeps;
