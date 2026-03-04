@@ -67,6 +67,13 @@
               if [ -f lib/vscode/package.json ]; then
                 echo "安装 lib/vscode 依赖"
 
+                # 修补 preinstall 脚本使其成为空操作
+                if [ -f lib/vscode/package.json ]; then
+                  echo "禁用 preinstall 脚本"
+                  jq 'del(.scripts.preinstall)' lib/vscode/package.json > lib/vscode/package.json.tmp
+                  mv lib/vscode/package.json.tmp lib/vscode/package.json
+                fi
+
                 # 创建 stub kerberos 包来跳过编译
                 echo "创建 stub kerberos 包以跳过编译"
                 mkdir -p lib/vscode/node_modules/kerberos
@@ -83,11 +90,10 @@ EOF
 module.exports = {};
 EOF
 
-                # 使用 --ignore-scripts 安装依赖，避免 preinstall 脚本失败
-                # preinstall 脚本只是下载 Electron headers，在 Nix 构建中不需要
-                echo "安装依赖（跳过 preinstall 脚本）"
-                npm install --prefix lib/vscode --ignore-scripts --verbose || \
-                npm install --prefix lib/vscode --ignore-scripts --verbose
+                # 正常安装依赖（preinstall 已被禁用）
+                echo "安装依赖（preinstall 已禁用，kerberos 已被 stub 替代）"
+                npm install --prefix lib/vscode --verbose || \
+                npm install --prefix lib/vscode --verbose
 
                 # 验证关键依赖已安装
                 if [ ! -f lib/vscode/node_modules/gulp/bin/gulp.js ]; then
@@ -119,7 +125,7 @@ EOF
 
             outputHashMode = "recursive";
             outputHashAlgo = "sha256";
-            outputHash = "sha256-ttFkYkppw12cQsx6UJUUJLAs9sEEiq+NcUtkeI7NaOY=";
+            outputHash = pkgs.lib.fakeSha256;
 
             # 禁用自动修补，避免在固定输出派生中引入 store 路径引用
             dontPatchShebangs = true;
