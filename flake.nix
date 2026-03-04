@@ -119,7 +119,7 @@ EOF
 
             outputHashMode = "recursive";
             outputHashAlgo = "sha256";
-            outputHash = pkgs.lib.fakeSha256;
+            outputHash = "sha256-ttFkYkppw12cQsx6UJUUJLAs9sEEiq+NcUtkeI7NaOY=";
 
             # 禁用自动修补，避免在固定输出派生中引入 store 路径引用
             dontPatchShebangs = true;
