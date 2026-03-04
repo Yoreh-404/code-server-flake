@@ -11,9 +11,12 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
 
-        # 基于官方包进行 override，保持官方的构建逻辑
-        code-server = pkgs.code-server.overrideAttrs (oldAttrs: rec {
+        # 基于官方包进行 override，使用 Node.js 22
+        code-server = (pkgs.code-server.override {
+          nodejs_20 = pkgs.nodejs_22;
+        }).overrideAttrs (oldAttrs: rec {
           version = "4.109.5";
+          commit = "d58aaa7b346b3262e0d4959e5fd5965e95ce456e";
 
           src = pkgs.fetchFromGitHub {
             owner = "coder";
@@ -23,23 +26,56 @@
             fetchSubmodules = true;
           };
 
-          # 更新 yarn cache 哈希
+          # 更新 yarn cache，使用 Node.js 22
           yarnCache = oldAttrs.yarnCache.overrideAttrs (old: {
             inherit src;
-            outputHash = "sha256-0000000000000000000000000000000000000000000=";  # 需要更新
+
+            nativeBuildInputs = [
+              (pkgs.yarn.override { nodejs = pkgs.nodejs_22; })
+              pkgs.nodejs_22
+              pkgs.git
+              pkgs.cacert
+            ];
+
+            # 使用国内镜像加速
+            buildPhase = ''
+              runHook preBuild
+
+              export HOME=$PWD
+              export GIT_SSL_CAINFO="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+
+              # 配置 npm 使用国内镜像
+              npm config set registry https://registry.npmmirror.com
+              npm config set fetch-retries 10
+              npm config set fetch-retry-mintimeout 20000
+              npm config set fetch-retry-maxtimeout 120000
+
+              yarn --cwd "./vendor" install --modules-folder modules --ignore-scripts --frozen-lockfile
+
+              yarn config set yarn-offline-mirror $out
+              find "$PWD" -name "yarn.lock" -printf "%h\n" | \
+                xargs -I {} yarn --cwd {} \
+                  --frozen-lockfile --ignore-scripts --ignore-platform \
+                  --ignore-engines --no-progress --non-interactive
+
+              find ./lib/vscode -name "yarn.lock" -printf "%h\n" | \
+                xargs -I {} yarn --cwd {} \
+                  --ignore-scripts --ignore-engines
+
+              runHook postBuild
+            '';
+
+            outputHashMode = "recursive";
+            outputHashAlgo = "sha256";
+            outputHash = pkgs.lib.fakeSha256;
           });
 
-          # 更新 git commit（用于缓存和多语言支持）
-          # 运行: git ls-remote https://github.com/coder/code-server.git v4.109.5
-          patches = oldAttrs.patches or [];
-
+          # 注入 git commit
           postPatch = (oldAttrs.postPatch or "") + ''
-            # 注入正确的 commit hash
-            COMMIT=$(cat <<'EOF'
-            # 需要运行: git ls-remote https://github.com/coder/code-server.git v4.109.5
-            # 然后替换这里的值
-            EOF
-            )
+            substituteInPlace ./ci/build/build-vscode.sh \
+              --replace-fail '$(git rev-parse HEAD)' "${commit}"
+            substituteInPlace ./ci/build/build-release.sh \
+              --replace-fail '$(git rev-parse HEAD)' "${commit}"
           '';
         });
       in
