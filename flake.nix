@@ -130,7 +130,7 @@
 
             # 修复 build-code-server.sh 脚本，使用完整路径调用 tsc
             if [ -f ./ci/build/build-code-server.sh ]; then
-              sed -i 's|^tsc$|./node_modules/.bin/tsc|g' ./ci/build/build-code-server.sh
+              sed -i 's|^\s*tsc\s*$|  ./node_modules/.bin/tsc|g' ./ci/build/build-code-server.sh
             fi
 
             # Build code-server and VS Code
