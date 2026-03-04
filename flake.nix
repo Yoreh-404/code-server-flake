@@ -83,10 +83,10 @@ EOF
 module.exports = {};
 EOF
 
-                # 正常安装其他依赖（跳过 preinstall/postinstall 脚本）
+                # 正常安装其他依赖（允许运行脚本以确保完整安装）
                 echo "安装依赖（kerberos 已被 stub 替代）"
-                npm install --prefix lib/vscode --ignore-scripts --verbose || \
-                npm install --prefix lib/vscode --ignore-scripts --verbose
+                npm install --prefix lib/vscode --verbose || \
+                npm install --prefix lib/vscode --verbose
 
                 # 验证关键依赖已安装
                 if [ ! -f lib/vscode/node_modules/gulp/bin/gulp.js ]; then
@@ -118,7 +118,7 @@ EOF
 
             outputHashMode = "recursive";
             outputHashAlgo = "sha256";
-            outputHash = "sha256-ttFkYkppw12cQsx6UJUUJLAs9sEEiq+NcUtkeI7NaOY=";
+            outputHash = pkgs.lib.fakeSha256;
 
             # 禁用自动修补，避免在固定输出派生中引入 store 路径引用
             dontPatchShebangs = true;
