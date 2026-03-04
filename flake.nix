@@ -70,13 +70,16 @@
             outputHash = "sha256-3xDinhLSZJoz7N7Z/+ttDLh82fwyunOTeSE3ULOZcHA=";
           });
 
-          # 注入 git commit（如果模式存在才替换）
-          postPatch = (oldAttrs.postPatch or "") + ''
+          # 在补丁应用之前修复文件路径
+          prePatch = ''
             # 修复 signature-verification.diff 补丁中的文件路径问题
             if [ -f patches/signature-verification.diff ]; then
               sed -i 's|lib/vscode/build/gulpfile\.reh\.js|lib/vscode/build/gulpfile.reh.ts|g' patches/signature-verification.diff
             fi
+          '';
 
+          # 注入 git commit（如果模式存在才替换）
+          postPatch = (oldAttrs.postPatch or "") + ''
             # 尝试替换 git commit，如果已经被补丁修改则跳过
             if grep -q '$(git rev-parse HEAD)' ./ci/build/build-vscode.sh 2>/dev/null; then
               substituteInPlace ./ci/build/build-vscode.sh \
