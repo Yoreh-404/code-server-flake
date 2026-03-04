@@ -22,17 +22,13 @@
           fetchSubmodules = true;
         };
 
-        # 预处理源码：删除锁文件，修改 package.json，生成 pnpm-lock.yaml
+        # 预处理源码：删除锁文件，修改 package.json
+        # pnpm-lock.yaml 已经预先生成并提交到仓库
         patchedSrc = pkgs.stdenv.mkDerivation {
           name = "code-server-${version}-patched-src";
           inherit src;
 
-          nativeBuildInputs = with pkgs; [
-            jq
-            nodejs_22
-            nodePackages.pnpm
-            cacert
-          ];
+          nativeBuildInputs = [ pkgs.jq ];
 
           buildPhase = ''
             cp -r $src $out
@@ -40,10 +36,7 @@
 
             cd $out
 
-            export HOME=$PWD
-            export GIT_SSL_CAINFO="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
-
-            # 删除所有锁文件
+            # 删除所有 npm/yarn 锁文件
             find . -name "package-lock.json" -delete
             find . -name "yarn.lock" -delete
 
@@ -57,22 +50,12 @@
               mv lib/vscode/package.json.tmp lib/vscode/package.json
             fi
 
-            # 创建 pnpm-workspace.yaml 来管理 monorepo
-            cat > pnpm-workspace.yaml <<'EOF'
-packages:
-  - '.'
-  - 'lib/vscode'
-  - 'vendor'
-EOF
-
-            # 生成 pnpm-lock.yaml
-            pnpm install --lockfile-only --ignore-scripts
+            # 复制预生成的 pnpm 文件
+            cp ${./pnpm-lock.yaml} pnpm-lock.yaml
+            cp ${./pnpm-workspace.yaml} pnpm-workspace.yaml
           '';
 
           dontInstall = true;
-
-          # 允许网络访问来生成 lockfile
-          __noChroot = true;
         };
 
         pnpmDeps = pkgs.fetchPnpmDeps {
