@@ -73,7 +73,9 @@
           # 在补丁应用之前修复文件路径
           prePatch = ''
             # 修复 signature-verification.diff 补丁中的文件路径问题
+            # 这个补丁文件在源码的 patches/ 目录中，不是 nixpkgs 的补丁
             if [ -f patches/signature-verification.diff ]; then
+              chmod +w patches/signature-verification.diff
               sed -i 's|lib/vscode/build/gulpfile\.reh\.js|lib/vscode/build/gulpfile.reh.ts|g' patches/signature-verification.diff
             fi
           '';
