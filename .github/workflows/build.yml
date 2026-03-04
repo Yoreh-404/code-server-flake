@@ -23,6 +23,13 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          clean: true
+
+      - name: Clean git tree
+        run: |
+          git clean -fdx
+          git status
 
       - name: Install Nix
         uses: cachix/install-nix-action@v27
