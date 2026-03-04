@@ -26,7 +26,7 @@
             fetchSubmodules = true;
           };
 
-          npmDepsHash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+          npmDepsHash = "sha256-Ec0ZlwdihsSbz+4OLPZ9OyBSx88HDOPp16ENEuvzQu4=";
 
           nativeBuildInputs = with pkgs; [
             python3
