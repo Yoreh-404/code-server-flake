@@ -103,6 +103,10 @@
               # 删除 preinstall 脚本
               ${pkgs.jq}/bin/jq 'del(.scripts.preinstall)' lib/vscode/package.json > lib/vscode/package.json.tmp
               mv lib/vscode/package.json.tmp lib/vscode/package.json
+
+              # 安装 lib/vscode 依赖
+              echo "Installing lib/vscode dependencies..."
+              npm install --prefix lib/vscode --verbose
             fi
           '';
 
