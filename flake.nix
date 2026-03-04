@@ -116,6 +116,10 @@
               jq 'del(.scripts.postinstall)' package.json | sponge package.json
             fi
 
+            # 配置 yarn 使用 offline mirror
+            echo '--install.offline true' >> .yarnrc
+            yarn config set yarn-offline-mirror "${yarnCache}"
+
             # 首先安装根目录的依赖
             yarn install --offline --frozen-lockfile --ignore-scripts --ignore-engines
 
