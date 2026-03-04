@@ -119,6 +119,10 @@ EOF
             outputHashMode = "recursive";
             outputHashAlgo = "sha256";
             outputHash = pkgs.lib.fakeSha256;
+
+            # 禁用自动修补，避免在固定输出派生中引入 store 路径引用
+            dontPatchShebangs = true;
+            dontPatchELF = true;
           };
 
           # 覆盖 buildPhase 来修复补丁并构建
