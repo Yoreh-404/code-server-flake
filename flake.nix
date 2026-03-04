@@ -22,18 +22,26 @@
           fetchSubmodules = true;
         };
 
-        # 预处理源码：删除锁文件，修改 package.json
+        # 预处理源码：删除锁文件，修改 package.json，生成 pnpm-lock.yaml
         patchedSrc = pkgs.stdenv.mkDerivation {
           name = "code-server-${version}-patched-src";
           inherit src;
 
-          nativeBuildInputs = [ pkgs.jq ];
+          nativeBuildInputs = with pkgs; [
+            jq
+            nodejs_22
+            nodePackages.pnpm
+            cacert
+          ];
 
           buildPhase = ''
             cp -r $src $out
             chmod -R +w $out
 
             cd $out
+
+            export HOME=$PWD
+            export GIT_SSL_CAINFO="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
 
             # 删除所有锁文件
             find . -name "package-lock.json" -delete
@@ -56,9 +64,15 @@ packages:
   - 'lib/vscode'
   - 'vendor'
 EOF
+
+            # 生成 pnpm-lock.yaml
+            pnpm install --lockfile-only --ignore-scripts
           '';
 
           dontInstall = true;
+
+          # 允许网络访问来生成 lockfile
+          __noChroot = true;
         };
 
         pnpmDeps = pkgs.fetchPnpmDeps {
