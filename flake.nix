@@ -128,6 +128,9 @@
             npm rebuild --offline
             npm rebuild --offline --prefix lib/vscode/remote
 
+            # 确保 node_modules/.bin 在 PATH 中
+            export PATH="$PWD/node_modules/.bin:$PATH"
+
             # Build code-server and VS Code
             yarn build
             VERSION=${version} yarn build:vscode
