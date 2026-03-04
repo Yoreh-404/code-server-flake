@@ -19,7 +19,7 @@
             owner = "coder";
             repo = "code-server";
             rev = "v${version}";
-            hash = "sha256-0000000000000000000000000000000000000000000=";  # 需要更新
+            hash = "sha256-gS2ReYCAsqmdRw0tx+svPrw0zwF41/+aICBqfflxB14=";
             fetchSubmodules = true;
           };
 

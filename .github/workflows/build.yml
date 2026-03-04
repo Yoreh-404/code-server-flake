@@ -16,8 +16,9 @@ jobs:
     strategy:
       matrix:
         system:
-          - x86_64-linux
+          # 暂时只构建 ARM 架构以节约资源
           - aarch64-linux
+          # - x86_64-linux
 
     steps:
       - name: Checkout repository
