@@ -62,7 +62,7 @@
           pname = "code-server-pnpm-deps";
           inherit version;
           src = patchedSrc;
-          hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+          hash = "sha256-kX1JNGXINK2YJWtcIxiw2h7q/8kosTpUYMZFWs88rW8=";
           fetcherVersion = 3;
         };
 
