@@ -67,7 +67,7 @@
 
             outputHashMode = "recursive";
             outputHashAlgo = "sha256";
-            outputHash = pkgs.lib.fakeSha256;
+            outputHash = "sha256-3xDinhLSZJoz7N7Z/+ttDLh82fwyunOTeSE3ULOZcHA=";
           });
 
           # 注入 git commit
