@@ -66,6 +66,25 @@
               # 安装 lib/vscode 的 npm 依赖
               if [ -f lib/vscode/package.json ]; then
                 echo "安装 lib/vscode 依赖"
+
+                # 创建 stub kerberos 包来跳过编译
+                echo "创建 stub kerberos 包以跳过编译"
+                mkdir -p lib/vscode/node_modules/kerberos
+                cat > lib/vscode/node_modules/kerberos/package.json <<'EOF'
+{
+  "name": "kerberos",
+  "version": "2.1.1",
+  "description": "Stub package to skip native compilation",
+  "main": "index.js"
+}
+EOF
+                cat > lib/vscode/node_modules/kerberos/index.js <<'EOF'
+// Stub kerberos module - not actually used by VS Code
+module.exports = {};
+EOF
+
+                # 正常安装其他依赖
+                echo "安装依赖（kerberos 已被 stub 替代）"
                 npm install --prefix lib/vscode --verbose || \
                 npm install --prefix lib/vscode --verbose
 
