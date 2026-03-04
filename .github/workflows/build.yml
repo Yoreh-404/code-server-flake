@@ -32,6 +32,8 @@ jobs:
             accept-flake-config = true
 
       - name: Setup Cachix
+        if: ${{ secrets.CACHIX_CACHE_NAME != '' && secrets.CACHIX_AUTH_TOKEN != '' }}
+        continue-on-error: true
         uses: cachix/cachix-action@v15
         with:
           name: ${{ secrets.CACHIX_CACHE_NAME }}
@@ -57,7 +59,8 @@ jobs:
           ls -lh result/
 
       - name: Push to Cachix
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && secrets.CACHIX_CACHE_NAME != '' && secrets.CACHIX_AUTH_TOKEN != '' }}
+        continue-on-error: true
         run: |
           nix build .#code-server --system ${{ matrix.system }} --json \
             | jq -r '.[].outputs.out' \
