@@ -66,7 +66,7 @@ EOF
           inherit version;
           src = patchedSrc;
           hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
-          fetcherVersion = "1";
+          fetcherVersion = "3";
         };
 
         code-server = pkgs.stdenv.mkDerivation {
