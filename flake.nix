@@ -37,18 +37,18 @@
               pkgs.cacert
             ];
 
-            # 使用国内镜像加速
+            # 使用官方源并增加重试
             buildPhase = ''
               runHook preBuild
 
               export HOME=$PWD
               export GIT_SSL_CAINFO="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
 
-              # 配置 npm 使用国内镜像
-              npm config set registry https://registry.npmmirror.com
+              # 增加重试次数和超时时间
               npm config set fetch-retries 10
               npm config set fetch-retry-mintimeout 20000
               npm config set fetch-retry-maxtimeout 120000
+              npm config set fetch-timeout 300000
 
               yarn --cwd "./vendor" install --modules-folder modules --ignore-scripts --frozen-lockfile
 
