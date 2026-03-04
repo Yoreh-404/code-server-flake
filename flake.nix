@@ -83,10 +83,10 @@ EOF
 module.exports = {};
 EOF
 
-                # 正常安装其他依赖
+                # 正常安装其他依赖（跳过 preinstall/postinstall 脚本）
                 echo "安装依赖（kerberos 已被 stub 替代）"
-                npm install --prefix lib/vscode --verbose || \
-                npm install --prefix lib/vscode --verbose
+                npm install --prefix lib/vscode --ignore-scripts --verbose || \
+                npm install --prefix lib/vscode --ignore-scripts --verbose
 
                 # 验证关键依赖已安装
                 if [ ! -f lib/vscode/node_modules/gulp/bin/gulp.js ]; then
