@@ -125,14 +125,8 @@
             cp -r ${yarnCache}/root-node-modules/node_modules ./
             chmod -R +w node_modules
 
-            # 配置 yarn 使用 offline mirror（用于子目录）
-            echo '--install.offline true' >> .yarnrc
-            yarn config set yarn-offline-mirror "${yarnCache}"
-
-            # 安装其他有 yarn.lock 的子目录依赖
-            find . -name "yarn.lock" -printf "%h\n" | \
-                xargs -I {} yarn --cwd {} \
-                  --offline --frozen-lockfile --ignore-scripts --ignore-engines
+            # 不需要重新安装子目录依赖，因为它们已经在 node_modules 中
+            # 只需要 patchShebangs
             patchShebangs .
 
             # Put ripgrep binary into bin
