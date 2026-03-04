@@ -70,12 +70,17 @@
             outputHash = "sha256-3xDinhLSZJoz7N7Z/+ttDLh82fwyunOTeSE3ULOZcHA=";
           });
 
-          # 注入 git commit
+          # 注入 git commit（如果模式存在才替换）
           postPatch = (oldAttrs.postPatch or "") + ''
-            substituteInPlace ./ci/build/build-vscode.sh \
-              --replace-fail '$(git rev-parse HEAD)' "${commit}"
-            substituteInPlace ./ci/build/build-release.sh \
-              --replace-fail '$(git rev-parse HEAD)' "${commit}"
+            # 尝试替换 git commit，如果已经被补丁修改则跳过
+            if grep -q '$(git rev-parse HEAD)' ./ci/build/build-vscode.sh 2>/dev/null; then
+              substituteInPlace ./ci/build/build-vscode.sh \
+                --replace '$(git rev-parse HEAD)' "${commit}"
+            fi
+            if grep -q '$(git rev-parse HEAD)' ./ci/build/build-release.sh 2>/dev/null; then
+              substituteInPlace ./ci/build/build-release.sh \
+                --replace '$(git rev-parse HEAD)' "${commit}"
+            fi
           '';
         });
       in
