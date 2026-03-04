@@ -26,18 +26,24 @@
             fetchSubmodules = true;
           };
 
-          # 更新 yarn cache，使用 Node.js 22
-          yarnCache = oldAttrs.yarnCache.overrideAttrs (old: {
+          # 更新 yarn cache，使用 Node.js 22，并使用 npm 安装根目录依赖
+          yarnCache = pkgs.stdenv.mkDerivation {
+            name = "code-server-${version}-${system}-yarn-cache";
             inherit src;
 
             nativeBuildInputs = [
               (pkgs.yarn.override { nodejs = pkgs.nodejs_22; })
               pkgs.nodejs_22
+              pkgs.python3
               pkgs.git
               pkgs.cacert
+              pkgs.pkg-config
+              pkgs.libsecret
+              pkgs.xorg.libX11
+              pkgs.xorg.libxkbfile
+              pkgs.jq
             ];
 
-            # 使用官方源并增加重试
             buildPhase = ''
               runHook preBuild
 
@@ -50,33 +56,32 @@
               npm config set fetch-retry-maxtimeout 120000
               npm config set fetch-timeout 300000
 
-              # 配置 yarn offline mirror
-              yarn config set yarn-offline-mirror $out
+              # 使用 npm ci 安装根目录依赖（code-server 使用 package-lock.json）
+              npm ci --ignore-scripts --verbose || npm ci --ignore-scripts --verbose
 
-              # 安装根目录依赖到 offline mirror
-              yarn install --frozen-lockfile --ignore-scripts --ignore-platform \
-                --ignore-engines --no-progress --non-interactive
+              # 保存根目录的 node_modules
+              mkdir -p $out/root-node-modules
+              cp -r node_modules $out/root-node-modules/
 
-              # 安装 vendor 依赖
+              # 安装 vendor 依赖（使用 yarn）
               yarn --cwd "./vendor" install --modules-folder modules --ignore-scripts --frozen-lockfile
 
-              # 查找并安装所有子目录的依赖
-              find "$PWD" -name "yarn.lock" -not -path "$PWD/yarn.lock" -printf "%h\n" | \
+              # 配置 yarn offline mirror 用于其他子目录
+              yarn config set yarn-offline-mirror $out
+
+              # 查找并安装所有有 yarn.lock 的子目录依赖
+              find ./lib/vscode -name "yarn.lock" -printf "%h\n" | \
                 xargs -I {} yarn --cwd {} \
                   --frozen-lockfile --ignore-scripts --ignore-platform \
                   --ignore-engines --no-progress --non-interactive
-
-              find ./lib/vscode -name "yarn.lock" -printf "%h\n" | \
-                xargs -I {} yarn --cwd {} \
-                  --ignore-scripts --ignore-engines
 
               runHook postBuild
             '';
 
             outputHashMode = "recursive";
             outputHashAlgo = "sha256";
-            outputHash = "sha256-nbR9Q7hyKTa93KigT5+lN2sOxq8Rf1M54/Iuz3GrAqM=";
-          });
+            outputHash = pkgs.lib.fakeSha256;
+          };
 
           # 覆盖 buildPhase 来修复补丁并构建
           buildPhase = ''
@@ -116,15 +121,16 @@
               jq 'del(.scripts.postinstall)' package.json | sponge package.json
             fi
 
-            # 配置 yarn 使用 offline mirror
+            # 从 yarnCache 复制根目录的 node_modules
+            cp -r ${yarnCache}/root-node-modules/node_modules ./
+            chmod -R +w node_modules
+
+            # 配置 yarn 使用 offline mirror（用于子目录）
             echo '--install.offline true' >> .yarnrc
             yarn config set yarn-offline-mirror "${yarnCache}"
 
-            # 首先安装根目录的依赖
-            yarn install --offline --frozen-lockfile --ignore-scripts --ignore-engines
-
-            # 然后安装其他目录的依赖
-            find . -name "yarn.lock" -not -path "./yarn.lock" -printf "%h\n" | \
+            # 安装其他有 yarn.lock 的子目录依赖
+            find . -name "yarn.lock" -printf "%h\n" | \
                 xargs -I {} yarn --cwd {} \
                   --offline --frozen-lockfile --ignore-scripts --ignore-engines
             patchShebangs .
