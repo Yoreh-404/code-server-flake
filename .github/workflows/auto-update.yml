@@ -1,0 +1,58 @@
+name: Auto Update code-server
+
+on:
+  schedule:
+    # 每天检查一次新版本
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  check-update:
+    runs-on: ubuntu-latest
+    outputs:
+      has_update: ${{ steps.check.outputs.has_update }}
+      latest_version: ${{ steps.check.outputs.latest_version }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check for new version
+        id: check
+        run: |
+          LATEST=$(curl -s https://api.github.com/repos/coder/code-server/releases/latest | grep -o '"tag_name": "[^"]*' | cut -d'"' -f4 | sed 's/^v//')
+          CURRENT=$(grep 'version = ' flake.nix | head -1 | grep -o '"[^"]*"' | tr -d '"')
+
+          echo "latest_version=$LATEST" >> $GITHUB_OUTPUT
+          echo "当前版本: $CURRENT"
+          echo "最新版本: $LATEST"
+
+          if [ "$LATEST" != "$CURRENT" ]; then
+            echo "has_update=true" >> $GITHUB_OUTPUT
+            echo "🎉 发现新版本!"
+          else
+            echo "has_update=false" >> $GITHUB_OUTPUT
+            echo "✅ 已是最新版本"
+          fi
+
+      - name: Create update PR
+        if: steps.check.outputs.has_update == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: update code-server to v${{ steps.check.outputs.latest_version }}"
+          title: "Update code-server to v${{ steps.check.outputs.latest_version }}"
+          body: |
+            自动检测到 code-server 新版本: v${{ steps.check.outputs.latest_version }}
+
+            请按以下步骤完成更新：
+
+            1. 本地 checkout 这个 PR 分支
+            2. 运行 `./update-version.sh`
+            3. 运行 `nix flake update`
+            4. 运行 `./update-yarn-hash.sh`
+            5. 提交更改并推送
+
+            或者手动更新 flake.nix 中的版本号和哈希值。
+          branch: auto-update-${{ steps.check.outputs.latest_version }}
+          delete-branch: true

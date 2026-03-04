@@ -1,0 +1,64 @@
+name: Build code-server for NixOS
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+  schedule:
+    # 每周检查一次新版本
+    - cron: '0 0 * * 0'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        system:
+          - x86_64-linux
+          - aarch64-linux
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v27
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+
+      - name: Setup Cachix
+        uses: cachix/cachix-action@v15
+        with:
+          name: ${{ secrets.CACHIX_CACHE_NAME }}
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          pushFilter: "(-source$|-src$)"
+
+      - name: Setup QEMU for cross-compilation
+        if: matrix.system == 'aarch64-linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-user-static
+
+      - name: Build code-server
+        run: |
+          nix build .#code-server \
+            --system ${{ matrix.system }} \
+            --print-build-logs \
+            --fallback
+
+      - name: Check build result
+        run: |
+          nix path-info .#code-server --system ${{ matrix.system }}
+          ls -lh result/
+
+      - name: Push to Cachix
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        run: |
+          nix build .#code-server --system ${{ matrix.system }} --json \
+            | jq -r '.[].outputs.out' \
+            | cachix push ${{ secrets.CACHIX_CACHE_NAME }}

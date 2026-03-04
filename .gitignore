@@ -1,0 +1,20 @@
+# .gitignore for Nix project
+
+# Nix build results
+result
+result-*
+
+# Nix development
+.direnv/
+.envrc
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
