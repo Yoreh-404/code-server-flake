@@ -128,6 +128,18 @@
             npm rebuild --offline
             npm rebuild --offline --prefix lib/vscode/remote
 
+            # 确保 TypeScript 可用并创建符号链接
+            if [ -d ./node_modules/typescript ]; then
+              mkdir -p ./node_modules/.bin
+              ln -sf ../typescript/bin/tsc ./node_modules/.bin/tsc
+              ln -sf ../typescript/bin/tsserver ./node_modules/.bin/tsserver
+              echo "TypeScript symlinks created"
+            else
+              echo "ERROR: TypeScript not found in node_modules"
+              ls -la ./node_modules/ | head -20
+              exit 1
+            fi
+
             # 修复 build-code-server.sh 脚本，使用完整路径调用 tsc
             if [ -f ./ci/build/build-code-server.sh ]; then
               sed -i 's|^\s*tsc\s*$|  ./node_modules/.bin/tsc|g' ./ci/build/build-code-server.sh
