@@ -63,6 +63,25 @@
               mkdir -p $out/root-node-modules
               cp -r node_modules $out/root-node-modules/
 
+              # 安装 lib/vscode 的 npm 依赖
+              if [ -f lib/vscode/package.json ]; then
+                echo "安装 lib/vscode 依赖"
+                npm install --prefix lib/vscode --verbose || \
+                npm install --prefix lib/vscode --verbose
+
+                # 验证关键依赖已安装
+                if [ ! -f lib/vscode/node_modules/gulp/bin/gulp.js ]; then
+                  echo "ERROR: gulp 未安装"
+                  ls -la lib/vscode/node_modules/ | head -30
+                  exit 1
+                fi
+                echo "关键依赖已安装: gulp"
+
+                # 保存 lib/vscode 的 node_modules
+                mkdir -p $out/vscode-node-modules
+                cp -r lib/vscode/node_modules $out/vscode-node-modules/
+              fi
+
               # 安装 vendor 依赖（使用 yarn）
               yarn --cwd "./vendor" install --modules-folder modules --ignore-scripts --frozen-lockfile
 
@@ -80,7 +99,7 @@
 
             outputHashMode = "recursive";
             outputHashAlgo = "sha256";
-            outputHash = "sha256-OASHwHQARkyZhYdXPs3cKcnWmvZwWmMTK1byGajq0hg=";
+            outputHash = pkgs.lib.fakeSha256;
           };
 
           # 覆盖 buildPhase 来修复补丁并构建
@@ -124,6 +143,21 @@
             # 从 yarnCache 复制根目录的 node_modules
             cp -r ${yarnCache}/root-node-modules/node_modules ./
             chmod -R +w node_modules
+
+            # 从 yarnCache 复制 lib/vscode 的 node_modules
+            if [ -d ${yarnCache}/vscode-node-modules/node_modules ]; then
+              echo "复制 lib/vscode 的 node_modules"
+              mkdir -p lib/vscode
+              cp -r ${yarnCache}/vscode-node-modules/node_modules lib/vscode/
+              chmod -R +w lib/vscode/node_modules
+
+              # 验证 gulp 是否存在
+              if [ ! -f lib/vscode/node_modules/gulp/bin/gulp.js ]; then
+                echo "ERROR: gulp 未找到！"
+                exit 1
+              fi
+              echo "gulp 已就绪"
+            fi
 
             # 不需要重新安装子目录依赖，因为它们已经在 node_modules 中
             # 只需要 patchShebangs
