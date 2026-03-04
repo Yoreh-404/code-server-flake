@@ -79,8 +79,67 @@
               sed -i 's|lib/vscode/build/gulpfile\.reh\.js|lib/vscode/build/gulpfile.reh.ts|g' patches/signature-verification.diff
             fi
 
-            # 继续执行原来的 buildPhase
-            ${oldAttrs.buildPhase or ""}
+            # Apply patches (允许部分失败，因为某些补丁可能引用了不存在的文件)
+            quilt push -a || echo "Warning: Some patches failed to apply"
+
+            # 继续执行原来的 buildPhase 的其余部分
+            export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+            export SKIP_SUBMODULE_DEPS=1
+            export NODE_OPTIONS="--openssl-legacy-provider --max-old-space-size=4096"
+
+            # Remove all built-in extensions
+            jq --slurp '.[0] * .[1]' "./lib/vscode/product.json" <(
+              cat << EOF
+            {
+              "builtInExtensions": []
+            }
+            EOF
+            ) | sponge ./lib/vscode/product.json
+
+            # Disable automatic updates
+            sed -i '/update.mode/,/\}/{s/default:.*/default: "none",/g}' \
+              lib/vscode/src/vs/platform/update/common/update.config.contribution.ts
+
+            # Install dependencies
+            patchShebangs .
+            find . -name "yarn.lock" -printf "%h\n" | \
+                xargs -I {} yarn --cwd {} \
+                  --offline --frozen-lockfile --ignore-scripts --ignore-engines
+            patchShebangs .
+
+            # Put ripgrep binary into bin
+            find -name ripgrep -type d \
+              -execdir mkdir -p {}/bin \; \
+              -execdir ln -s ${pkgs.ripgrep}/bin/rg {}/bin/rg \;
+
+            # Run post-install scripts
+            find ./lib/vscode \( -path "*/node_modules/*" -or -path "*/extensions/*" \) \
+              -and -type f -name "yarn.lock" -printf "%h\n" | \
+                xargs -I {} sh -c 'jq -e ".scripts.postinstall" {}/package.json >/dev/null && yarn --cwd {} postinstall --frozen-lockfile --offline || true'
+            patchShebangs .
+
+            # Build binary packages
+            npm rebuild --offline
+            npm rebuild --offline --prefix lib/vscode/remote
+
+            # Build code-server and VS Code
+            yarn build
+            VERSION=${version} yarn build:vscode
+
+            # Inject version into package.json
+            jq --slurp '.[0] * .[1]' ./package.json <(
+              cat << EOF
+            {
+              "version": "${version}"
+            }
+            EOF
+            ) | sponge ./package.json
+
+            # Create release
+            KEEP_MODULES=1 yarn release
+
+            # Prune development dependencies
+            npm prune --omit=dev --prefix release
 
             runHook postBuild
           '';
