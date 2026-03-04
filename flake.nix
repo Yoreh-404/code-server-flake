@@ -128,8 +128,10 @@
             npm rebuild --offline
             npm rebuild --offline --prefix lib/vscode/remote
 
-            # 确保 node_modules/.bin 在 PATH 中
-            export PATH="$PWD/node_modules/.bin:$PATH"
+            # 修复 build-code-server.sh 脚本，使用完整路径调用 tsc
+            if [ -f ./ci/build/build-code-server.sh ]; then
+              sed -i 's|^tsc$|./node_modules/.bin/tsc|g' ./ci/build/build-code-server.sh
+            fi
 
             # Build code-server and VS Code
             yarn build
