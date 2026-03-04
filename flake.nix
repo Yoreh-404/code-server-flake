@@ -102,6 +102,12 @@
 
             # Install dependencies
             patchShebangs .
+
+            # 移除 postinstall 脚本以避免在离线模式下安装测试依赖
+            if [ -f package.json ]; then
+              jq 'del(.scripts.postinstall)' package.json | sponge package.json
+            fi
+
             find . -name "yarn.lock" -printf "%h\n" | \
                 xargs -I {} yarn --cwd {} \
                   --offline --frozen-lockfile --ignore-scripts --ignore-engines
