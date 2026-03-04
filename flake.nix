@@ -47,6 +47,7 @@
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1";
           SKIP_SUBMODULE_DEPS = "1";
 
+          # 简化 postPatch，只做必要的替换
           postPatch = ''
             export HOME=$PWD
             patchShebangs ./ci
@@ -56,23 +57,25 @@
               --replace-fail '$(git rev-parse HEAD)' "${commit}"
             substituteInPlace ./ci/build/build-release.sh \
               --replace-fail '$(git rev-parse HEAD)' "${commit}"
+          '';
 
-            # 修复补丁
+          preConfigure = ''
+            # 在 npm install 之前修复补丁和配置
             if [ -f patches/signature-verification.diff ]; then
               sed -i 's|lib/vscode/build/gulpfile\.reh\.js|lib/vscode/build/gulpfile.reh.ts|g' patches/signature-verification.diff
             fi
 
             # Apply patches
-            quilt push -a || echo "Some patches failed"
+            ${pkgs.quilt}/bin/quilt push -a || echo "Some patches failed"
 
             # Remove built-in extensions
-            jq --slurp '.[0] * .[1]' "./lib/vscode/product.json" <(
+            ${pkgs.jq}/bin/jq --slurp '.[0] * .[1]' "./lib/vscode/product.json" <(
               cat << EOF
             {
               "builtInExtensions": []
             }
             EOF
-            ) | sponge ./lib/vscode/product.json
+            ) | ${pkgs.moreutils}/bin/sponge ./lib/vscode/product.json
 
             # Disable automatic updates
             sed -i '/update.mode/,/\}/{s/default:.*/default: "none",/g}' \
@@ -93,7 +96,7 @@
               echo "module.exports = {};" > lib/vscode/node_modules/kerberos/index.js
 
               # 删除 preinstall 脚本
-              jq 'del(.scripts.preinstall)' lib/vscode/package.json > lib/vscode/package.json.tmp
+              ${pkgs.jq}/bin/jq 'del(.scripts.preinstall)' lib/vscode/package.json > lib/vscode/package.json.tmp
               mv lib/vscode/package.json.tmp lib/vscode/package.json
             fi
           '';
@@ -114,13 +117,13 @@
             VERSION=${version} npm run build:vscode
 
             # Inject version
-            jq --slurp '.[0] * .[1]' ./package.json <(
+            ${pkgs.jq}/bin/jq --slurp '.[0] * .[1]' ./package.json <(
               cat << EOF
             {
               "version": "${version}"
             }
             EOF
-            ) | sponge ./package.json
+            ) | ${pkgs.moreutils}/bin/sponge ./package.json
 
             # Create release
             KEEP_MODULES=1 npm run release
